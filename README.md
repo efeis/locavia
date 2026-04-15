@@ -1,6 +1,6 @@
 # locavia
 
-"locavia" is a cloud-based travel search application where users enter a city and a topic, and the system retrieves travel-relevant information from multiple external APIs, stores the results persistently, and displays both fresh and historical results.
+a cloud-based travel search application where users enter a city and a topic, and the system retrieves travel-relevant information from multiple external APIs, stores the results persistently, and displays both fresh and historical results.
 
 ## Project Goal
 The goal of this project is to implement Lab Exercise 11: Travel Guide (Introduction to Cloud Computing) as a cloud-native web application on Google Cloud.
