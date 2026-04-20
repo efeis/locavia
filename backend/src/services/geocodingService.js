@@ -44,6 +44,16 @@ export async function validateCity(city) {
       lat: cityResult.geometry.location.lat,
       lng: cityResult.geometry.location.lng,
     },
+    viewport: {
+      northeast: {
+        lat: cityResult.geometry.viewport?.northeast?.lat ?? null,
+        lng: cityResult.geometry.viewport?.northeast?.lng ?? null,
+      },
+      southwest: {
+        lat: cityResult.geometry.viewport?.southwest?.lat ?? null,
+        lng: cityResult.geometry.viewport?.southwest?.lng ?? null,
+      },
+    },
     placeId: cityResult.place_id,
     types: cityResult.types || [],
   };

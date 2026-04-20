@@ -4,7 +4,13 @@ dotenv.config();
 import express from "express";
 import cors from "cors";
 import { validateCity } from "./services/geocodingService.js";
-import { searchPlaces } from "./services/placesService.js";
+import {
+  saveQuery,
+  saveResults,
+  getHistoricalQueries,
+  getHistoricalResults,
+} from "./services/firestoreService.js";
+import { runSourceSearches } from "./services/searchAggregatorService.js";
 
 const app = express();
 const PORT = 3001;
@@ -34,16 +40,45 @@ app.post("/search", async (req, res) => {
       });
     }
 
-    const placesResults = await searchPlaces(validatedCity.normalizedCity, topic);
+    const historicalQueries = await getHistoricalQueries(
+      validatedCity.normalizedCity,
+      topic
+    );
+
+    const historicalResults = await getHistoricalResults(
+      historicalQueries.map((query) => query.id)
+    );
+
+    const { sourcesUsed, mergedResults } = await runSourceSearches(
+      validatedCity,
+      topic
+    );
+
+    const queryId = await saveQuery({
+      originalCity: city,
+      normalizedCity: validatedCity.normalizedCity,
+      topic,
+      formattedAddress: validatedCity.formattedAddress,
+      country: validatedCity.country,
+      location: validatedCity.location,
+      sourcesUsed,
+      searchedAt: new Date().toISOString(),
+    });
+
+    if (mergedResults.length > 0) {
+      await saveResults(queryId, mergedResults);
+    }
 
     return res.json({
+      queryId,
       query: {
         city: validatedCity.normalizedCity,
         topic,
       },
       cityValidation: validatedCity,
-      results: placesResults,
-      historical: [],
+      sourcesUsed,
+      results: mergedResults,
+      historical: historicalResults,
     });
   } catch (error) {
     console.error("Search failed:", error);
