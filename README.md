@@ -268,7 +268,8 @@ Create a `.env` file inside the `backend` directory.
 
 Example:
 
-env
+```env
 GOOGLE_MAPS_API_KEY=your_google_maps_api_key
 SERPAPI_KEY=your_serpapi_key
 ENABLE_SERPAPI=true
+```
