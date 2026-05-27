@@ -6,7 +6,7 @@
 
 ## Project Goal
 
-This project was developed as the implementation of **Lab Exercise 11: Travel Guide** in the course **Introduction to Cloud Computing**.
+This project was developed as part of **Lab Exercise 11: Travel Guide** in the course **Introduction to Cloud Computing** in the **International Computer Science** bachelor’s program at **OTH Regensburg.**
 
 The goal was to build a travel-relevant web application that:
 - accepts a user-defined location and topic
