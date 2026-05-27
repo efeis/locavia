@@ -2,6 +2,8 @@
 
 "locavia" is a cloud-based travel and place discovery app where users enter a location and a topic, and the system retrieves relevant information from multiple external services, stores query and result data persistently, and displays both current and historical results.
 
+<img width="1200" height="932" alt="Screenshot 2026-05-27 at 16 32 01" src="https://github.com/user-attachments/assets/77ed3864-e845-46dc-943b-6945e25472c6" />
+
 ## Project Goal
 
 This project was developed as the implementation of **Lab Exercise 11: Travel Guide** in the course **Introduction to Cloud Computing**.
