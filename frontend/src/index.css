@@ -17,3 +17,12 @@ body {
   font-family: "DM Sans", sans-serif;
   background: #f7f8f8;
 }
+
+a {
+  color: inherit;
+}
+
+button,
+input {
+  font: inherit;
+}

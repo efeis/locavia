@@ -7,13 +7,24 @@ function App() {
   const [topic, setTopic] = useState("");
   const [results, setResults] = useState([]);
   const [historicalResults, setHistoricalResults] = useState([]);
+  const [sourcesUsed, setSourcesUsed] = useState([]);
+  const [meta, setMeta] = useState(null);
+  const [errorMessage, setErrorMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [lastQuery, setLastQuery] = useState(null);
+  const [showAllPlaces, setShowAllPlaces] = useState(false);
+  const [showAllWebResults, setShowAllWebResults] = useState(false);
+  const [showHistorical, setShowHistorical] = useState(false);
 
   const handleSearch = async (e) => {
     e.preventDefault();
     setLoading(true);
     setHasSearched(true);
+    setShowAllPlaces(false);
+    setShowAllWebResults(false);
+    setShowHistorical(false);
+    setErrorMessage("");
 
     try {
       const response = await fetch("http://localhost:3001/search", {
@@ -27,24 +38,58 @@ function App() {
       const data = await response.json();
 
       if (!response.ok) {
-        alert(data.error || "Search failed");
         setResults([]);
         setHistoricalResults([]);
+        setSourcesUsed([]);
+        setMeta(null);
+        setLastQuery(null);
+        setErrorMessage(data.error || "Search failed");
         return;
       }
 
       setResults(data.results || []);
       setHistoricalResults(data.historical || []);
+      setSourcesUsed(data.sourcesUsed || []);
+      setMeta(data.meta || null);
+      setLastQuery(data.query || null);
     } catch (error) {
       console.error("Search failed:", error);
-      alert("Network or backend error");
+      setResults([]);
+      setHistoricalResults([]);
+      setSourcesUsed([]);
+      setMeta(null);
+      setLastQuery(null);
+      setErrorMessage("Network or backend error");
     } finally {
       setLoading(false);
     }
   };
 
-  const renderCard = (result, index, historical = false) => (
-    <div key={result.id || index} className={`result-card ${historical ? "historical-card" : ""}`}>
+  const placeResults = results.filter((result) => result.source === "Google Places");
+  const webResults = results.filter((result) => result.source !== "Google Places");
+
+  const visiblePlaces = showAllPlaces ? placeResults : placeResults.slice(0, 5);
+  const visibleWebResults = showAllWebResults ? webResults : webResults.slice(0, 3);
+
+  const uniqueHistorical = historicalResults.filter((result, index, arr) => {
+    const key = `${result.title || ""}|${result.address || ""}|${result.source || ""}`;
+    return (
+      index ===
+      arr.findIndex(
+        (item) =>
+          `${item.title || ""}|${item.address || ""}|${item.source || ""}` === key
+      )
+    );
+  });
+
+  const displayCity = lastQuery?.city || "";
+  const displayTopic = lastQuery?.topic || "";
+
+  const renderPlaceCard = (result, index, historical = false) => (
+    <div
+      key={result.id || `${result.source}-${index}`}
+      className={`result-card ${historical ? "historical-card" : ""}`}
+    >
       <div className="result-topline">
         <p className="result-source">
           {result.source}
@@ -64,12 +109,37 @@ function App() {
       </div>
 
       <h3>{result.title}</h3>
-
       <p className="result-address">{result.address}</p>
 
       {result.url && (
         <a href={result.url} target="_blank" rel="noreferrer" className="maps-link">
           Open in Google Maps
+        </a>
+      )}
+    </div>
+  );
+
+  const renderWebCard = (result, index, historical = false) => (
+    <div
+      key={result.id || `${result.source}-${index}`}
+      className={`web-insight-card ${historical ? "historical-card" : ""}`}
+    >
+      <p className="result-source">
+        {result.source}
+        {historical ? " · historical" : ""}
+      </p>
+      <h4>{result.title}</h4>
+      {result.description && <p className="result-description">{result.description}</p>}
+      <p className="result-address">{result.address}</p>
+
+      {result.url && (
+        <a
+          href={result.url}
+          target="_blank"
+          rel="noreferrer"
+          className="maps-link secondary-link"
+        >
+          Open source
         </a>
       )}
     </div>
@@ -107,37 +177,139 @@ function App() {
             {loading ? "..." : "Search"}
           </button>
         </form>
+
+        {!hasSearched && (
+          <p className="search-helper">
+            Enter a location and a topic to find top places and supporting web insights.
+          </p>
+        )}
       </header>
 
       <main className="results-section">
         {hasSearched && !loading && results.length > 0 && (
-          <div className="section-header">
-            <div>
-              <h2>Best {topic} spots in {city}</h2>
-              <p className="section-subtitle">{results.length} highly rated places found</p>
+          <section className="summary-block">
+            <h2>
+              Best {displayTopic} spots
+              {displayCity ? ` in ${displayCity}` : ""}
+            </h2>
+
+            <p className="section-subtitle">
+              {placeResults.length} highly rated places and {webResults.length} supporting web
+              results found
+            </p>
+
+            <div className="system-summary">
+              <span className="system-pill">
+                Sources: {sourcesUsed.length > 0 ? sourcesUsed.join(", ") : "none"}
+              </span>
+
+              {meta?.resultCount !== undefined && (
+                <span className="system-pill">Current results: {meta.resultCount}</span>
+              )}
+
+              <span className="system-pill">
+                Historical results: {uniqueHistorical.length}
+              </span>
             </div>
+          </section>
+        )}
+
+        {errorMessage && (
+          <div className="empty-state">
+            <h3>Something went wrong</h3>
+            <p>{errorMessage}</p>
           </div>
         )}
 
-        {results.map((result, index) => renderCard(result, index, false))}
-
-        {hasSearched && !loading && results.length === 0 && (
+        {hasSearched && !loading && results.length === 0 && !errorMessage && (
           <div className="empty-state">
-            <h3>No matching places found</h3>
+            <h3>No matching results found</h3>
             <p>Try a broader topic or another city.</p>
           </div>
         )}
 
-        {historicalResults.length > 0 && (
+        {(visiblePlaces.length > 0 || visibleWebResults.length > 0) && (
+          <section className="main-overview-layout">
+            <div className="top-places-block">
+              <div className="section-header">
+                <div>
+                  <h2>Top places</h2>
+                  <p className="section-subtitle">
+                    Highly rated location results you can actually visit
+                  </p>
+                </div>
+              </div>
+
+              {visiblePlaces.map((result, index) => renderPlaceCard(result, index))}
+
+              {placeResults.length > 5 && (
+                <button
+                  type="button"
+                  className="see-more-button"
+                  onClick={() => setShowAllPlaces((prev) => !prev)}
+                >
+                  {showAllPlaces
+                    ? "Show less places"
+                    : `See more places (${placeResults.length - 5})`}
+                </button>
+              )}
+            </div>
+
+            <aside className="web-insights-block">
+              <div className="section-header">
+                <div>
+                  <h2>Web insights</h2>
+                  <p className="section-subtitle">
+                    Guides, articles, and discussions that add context
+                  </p>
+                </div>
+              </div>
+
+              {visibleWebResults.map((result, index) => renderWebCard(result, index))}
+
+              {webResults.length > 3 && (
+                <button
+                  type="button"
+                  className="see-more-button"
+                  onClick={() => setShowAllWebResults((prev) => !prev)}
+                >
+                  {showAllWebResults
+                    ? "Show less web results"
+                    : `See more web results (${webResults.length - 3})`}
+                </button>
+              )}
+            </aside>
+          </section>
+        )}
+
+        {uniqueHistorical.length > 0 && (
           <section className="historical-section">
             <div className="section-header">
               <div>
                 <h2>Previous results</h2>
-                <p className="section-subtitle">{historicalResults.length} historical entries</p>
+                <p className="section-subtitle">
+                  {uniqueHistorical.length} saved historical entries
+                </p>
               </div>
             </div>
 
-            {historicalResults.map((result, index) => renderCard(result, index, true))}
+            <button
+              type="button"
+              className="see-more-button"
+              onClick={() => setShowHistorical((prev) => !prev)}
+            >
+              {showHistorical ? "Hide previous results" : "Show previous results"}
+            </button>
+
+            {showHistorical && (
+              <div className="historical-list">
+                {uniqueHistorical.slice(0, 6).map((result, index) =>
+                  result.source === "Google Places"
+                    ? renderPlaceCard(result, index, true)
+                    : renderWebCard(result, index, true)
+                )}
+              </div>
+            )}
           </section>
         )}
       </main>

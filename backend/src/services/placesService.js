@@ -2,24 +2,32 @@ function mapTopicToIncludedType(topic) {
   const normalized = topic.trim().toLowerCase();
 
   const topicMap = {
-    restaurant: "restaurant",
-    restaurants: "restaurant",
-    cafe: "cafe",
-    cafés: "cafe",
-    coffee: "cafe",
-    bar: "bar",
-    bars: "bar",
     club: "night_club",
     clubs: "night_club",
-    museum: "museum",
-    museums: "museum",
-    park: "park",
-    parks: "park",
+    coffee: "cafe",
+    café: "cafe",
+    cafés: "cafe",
     burger: "restaurant",
     burgers: "restaurant",
   };
 
-  return topicMap[normalized] || null;
+  const directlySupportedTypes = [
+    "restaurant",
+    "bar",
+    "museum",
+    "park",
+    "cafe",
+  ];
+
+  if (topicMap[normalized]) {
+    return topicMap[normalized];
+  }
+
+  if (directlySupportedTypes.includes(normalized)) {
+    return normalized;
+  }
+
+  return null;
 }
 
 function filterPlaces(results) {
@@ -27,7 +35,7 @@ function filterPlaces(results) {
     const rating = place.rating ?? 0;
     const userRatingCount = place.userRatingCount ?? 0;
 
-    return rating >= 4.2 && userRatingCount >= 50;
+    return rating >= 4.0 && userRatingCount >= 50;
   });
 }
 
@@ -97,16 +105,14 @@ export async function searchPlaces(validatedCity, topic) {
   );
 
   const data = await response.json();
-  console.log("PLACES RESPONSE:", JSON.stringify(data, null, 2));
 
-  if (!data.places || !Array.isArray(data.places)) {
+  if (!Array.isArray(data.places)) {
     return [];
   }
 
   const mappedResults = data.places.map((place) => ({
     source: "Google Places",
     title: place.displayName?.text || "Unknown place",
-    description: place.formattedAddress || "No address available",
     address: place.formattedAddress || "No address available",
     rating: place.rating ?? null,
     userRatingCount: place.userRatingCount ?? 0,
@@ -115,6 +121,5 @@ export async function searchPlaces(validatedCity, topic) {
     longitude: place.location?.longitude ?? null,
   }));
 
-  const filteredResults = filterPlaces(mappedResults);
-  return sortPlaces(filteredResults);
+  return sortPlaces(filterPlaces(mappedResults));
 }

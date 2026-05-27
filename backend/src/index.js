@@ -31,6 +31,8 @@ app.post("/search", async (req, res) => {
     });
   }
 
+  const normalizedTopic = topic.trim().toLowerCase();
+
   try {
     const validatedCity = await validateCity(city);
 
@@ -42,26 +44,27 @@ app.post("/search", async (req, res) => {
 
     const historicalQueries = await getHistoricalQueries(
       validatedCity.normalizedCity,
-      topic
+      normalizedTopic
     );
 
     const historicalResults = await getHistoricalResults(
       historicalQueries.map((query) => query.id)
     );
 
-    const { sourcesUsed, mergedResults } = await runSourceSearches(
+    const { jobs, sourcesUsed, mergedResults } = await runSourceSearches(
       validatedCity,
-      topic
+      normalizedTopic
     );
 
     const queryId = await saveQuery({
       originalCity: city,
       normalizedCity: validatedCity.normalizedCity,
-      topic,
+      topic: normalizedTopic,
       formattedAddress: validatedCity.formattedAddress,
       country: validatedCity.country,
       location: validatedCity.location,
       sourcesUsed,
+      jobs,
       searchedAt: new Date().toISOString(),
     });
 
@@ -73,12 +76,17 @@ app.post("/search", async (req, res) => {
       queryId,
       query: {
         city: validatedCity.normalizedCity,
-        topic,
+        topic: normalizedTopic,
       },
       cityValidation: validatedCity,
+      jobs,
       sourcesUsed,
       results: mergedResults,
       historical: historicalResults,
+      meta: {
+        resultCount: mergedResults.length,
+        historicalCount: historicalResults.length,
+      },
     });
   } catch (error) {
     console.error("Search failed:", error);
