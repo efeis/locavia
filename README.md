@@ -1,6 +1,6 @@
 # locavia
 
-Locavia is a cloud-based travel and place discovery app where users enter a location and a topic, and the system retrieves relevant information from multiple external services, stores query and result data persistently, and displays both current and historical results.
+"locavia" is a cloud-based travel and place discovery app where users enter a location and a topic, and the system retrieves relevant information from multiple external services, stores query and result data persistently, and displays both current and historical results.
 
 ## Project Goal
 
