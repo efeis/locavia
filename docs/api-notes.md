@@ -1,41 +1,50 @@
 # API Notes
 
-## Initial implementation
-The first working version will use two external APIs.
+## APIs Used
 
-### API 1: Wikipedia API
+### Google Geocoding API
 Purpose:
-- Retrieve descriptive travel-related information for cities, landmarks, or places
+- validate and normalize the user-entered location
 
-Possible fields:
-- title
-- summary
-- source URL
+Used fields:
+- normalized location name
+- formatted address
+- country
+- coordinates
+- viewport
 
-### API 2: Places API
+### Google Places API
 Purpose:
-- Retrieve place-based results such as restaurants, cafes, museums, or parks
+- retrieve actionable place-based results such as restaurants, cafes, museums, or parks
 
-Possible fields:
+Used fields:
 - place name
 - address
 - rating
+- rating count
 - coordinates
-- URL
+- Google Maps URL
 
-## Final target
-The final version should use three external APIs in total:
-- Wikipedia API
-- Places API
-- One additional travel-relevant API for enrichment
+### SerpApi
+Purpose:
+- retrieve supporting web-based results such as articles, guides, and discussion links
+
+Used fields:
+- title
+- snippet/description
+- displayed link
+- source URL
 
 ## Unified Result Model
-Each aggregated result should aim to contain:
+
+The backend maps source-specific responses into a shared result structure:
+
 - source
 - title
 - description
 - address
 - rating
+- userRatingCount
 - url
 - latitude
 - longitude
