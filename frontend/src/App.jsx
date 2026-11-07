@@ -1,33 +1,61 @@
 import { useState } from "react";
-import logo from "./assets/locavia-logo.png";
+import logoWithStamp from "./assets/logo_with_stamp.png";
 import "./App.css";
+
+const API_BASE_URL = "http://localhost:3001";
+
+const getSourceName = (result) => {
+  const candidates = [result.address, result.url].filter(Boolean);
+
+  for (const candidate of candidates) {
+    const displayedHost = candidate.split(/[››]/, 1)[0].trim();
+
+    try {
+      const url = new URL(
+        displayedHost.includes("://") ? displayedHost : `https://${displayedHost}`
+      );
+      const hostname = url.hostname.replace(/^www\./, "");
+      const looksLikeDomain = /^[a-z0-9-]+(?:\.[a-z0-9-]+)+$/i.test(hostname);
+      if (
+        looksLikeDomain &&
+        hostname !== "google.com" &&
+        !hostname.endsWith(".google.com")
+      ) {
+        return hostname;
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return "Web guide";
+};
 
 function App() {
   const [city, setCity] = useState("");
   const [topic, setTopic] = useState("");
   const [results, setResults] = useState([]);
-  const [historicalResults, setHistoricalResults] = useState([]);
-  const [sourcesUsed, setSourcesUsed] = useState([]);
-  const [meta, setMeta] = useState(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [loading, setLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [lastQuery, setLastQuery] = useState(null);
-  const [showAllPlaces, setShowAllPlaces] = useState(false);
-  const [showAllWebResults, setShowAllWebResults] = useState(false);
-  const [showHistorical, setShowHistorical] = useState(false);
+  const [activeResultsTab, setActiveResultsTab] = useState("places");
+  const [placeSort, setPlaceSort] = useState("balanced");
+  const [visibleWebCount, setVisibleWebCount] = useState(5);
 
-  const handleSearch = async (e) => {
-    e.preventDefault();
+  const handleSearch = async (event) => {
+    event.preventDefault();
     setLoading(true);
     setHasSearched(true);
-    setShowAllPlaces(false);
-    setShowAllWebResults(false);
-    setShowHistorical(false);
+    setResults([]);
+    setLastQuery(null);
+    setActiveResultsTab("places");
+    setPlaceSort("balanced");
+    setVisibleWebCount(5);
     setErrorMessage("");
 
     try {
-      const response = await fetch("http://localhost:3001/search", {
+      const response = await fetch(`${API_BASE_URL}/search`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -38,27 +66,20 @@ function App() {
       const data = await response.json();
 
       if (!response.ok) {
-        setResults([]);
-        setHistoricalResults([]);
-        setSourcesUsed([]);
-        setMeta(null);
-        setLastQuery(null);
         setErrorMessage(data.error || "Search failed");
         return;
       }
 
-      setResults(data.results || []);
-      setHistoricalResults(data.historical || []);
-      setSourcesUsed(data.sourcesUsed || []);
-      setMeta(data.meta || null);
+      const searchResults = data.results || [];
+      setResults(searchResults);
+      setActiveResultsTab(
+        searchResults.some((result) => result.source === "Google Places")
+          ? "places"
+          : "guides"
+      );
       setLastQuery(data.query || null);
     } catch (error) {
       console.error("Search failed:", error);
-      setResults([]);
-      setHistoricalResults([]);
-      setSourcesUsed([]);
-      setMeta(null);
-      setLastQuery(null);
       setErrorMessage("Network or backend error");
     } finally {
       setLoading(false);
@@ -67,70 +88,129 @@ function App() {
 
   const placeResults = results.filter((result) => result.source === "Google Places");
   const webResults = results.filter((result) => result.source !== "Google Places");
+  const sortedPlaces = [...placeResults].sort((a, b) => {
+    const ratingDifference = (b.rating ?? 0) - (a.rating ?? 0);
+    const reviewDifference = (b.userRatingCount ?? 0) - (a.userRatingCount ?? 0);
 
-  const visiblePlaces = showAllPlaces ? placeResults : placeResults.slice(0, 5);
-  const visibleWebResults = showAllWebResults ? webResults : webResults.slice(0, 3);
+    if (placeSort === "rated") return ratingDifference || reviewDifference;
+    if (placeSort === "reviewed") return reviewDifference || ratingDifference;
 
-  const uniqueHistorical = historicalResults.filter((result, index, arr) => {
-    const key = `${result.title || ""}|${result.address || ""}|${result.source || ""}`;
-    return (
-      index ===
-      arr.findIndex(
-        (item) =>
-          `${item.title || ""}|${item.address || ""}|${item.source || ""}` === key
-      )
-    );
+    const confidenceScore = (place) => {
+      const reviewCount = place.userRatingCount ?? 0;
+      return (
+        (reviewCount / (reviewCount + 100)) * (place.rating ?? 0) +
+        (100 / (reviewCount + 100)) * 4
+      );
+    };
+
+    return confidenceScore(b) - confidenceScore(a) || reviewDifference;
   });
-
-  const displayCity = lastQuery?.city || "";
-  const displayTopic = lastQuery?.topic || "";
-
-  const renderPlaceCard = (result, index, historical = false) => (
-    <div
-      key={result.id || `${result.source}-${index}`}
-      className={`result-card ${historical ? "historical-card" : ""}`}
-    >
-      <div className="result-topline">
-        <p className="result-source">
-          {result.source}
-          {historical ? " · historical" : ""}
-        </p>
-
-        {result.rating && (
-          <div className="rating-badge">
-            <span className="rating-score">{result.rating}</span>
-            <span className="rating-count">
-              {typeof result.userRatingCount === "number"
-                ? `(${result.userRatingCount} ratings)`
-                : ""}
-            </span>
-          </div>
-        )}
-      </div>
-
-      <h3>{result.title}</h3>
-      <p className="result-address">{result.address}</p>
-
-      {result.url && (
-        <a href={result.url} target="_blank" rel="noreferrer" className="maps-link">
-          Open in Google Maps
-        </a>
-      )}
-    </div>
+  const placeDisplayCount = Math.min(sortedPlaces.length, 20);
+  const visiblePlaces = sortedPlaces.slice(
+    0,
+    placeDisplayCount > 1 ? placeDisplayCount - (placeDisplayCount % 2) : placeDisplayCount
   );
+  const visibleWebResults = webResults.slice(0, visibleWebCount);
 
-  const renderWebCard = (result, index, historical = false) => (
-    <div
+  const displayCity = lastQuery?.city || city.trim();
+  const displayTopic = lastQuery?.topic || topic.trim();
+
+  const renderPhotoCredit = (attributions = []) => {
+    const authors = attributions.filter((attribution) => attribution.displayName);
+    if (authors.length === 0) return null;
+
+    return authors.map((attribution, index) => {
+      const label = `Photo by ${attribution.displayName}`;
+      const author = attribution.uri ? (
+        <a href={attribution.uri} target="_blank" rel="noreferrer">
+          {label}
+        </a>
+      ) : (
+        label
+      );
+
+      return (
+        <span key={attribution.uri || attribution.displayName}>
+          {index > 0 ? ", " : ""}
+          {author}
+        </span>
+      );
+    });
+  };
+
+  const renderPlaceCard = (result, index) => {
+    const photoUrl = result.photoName
+      ? `${API_BASE_URL}/places-photo?name=${encodeURIComponent(result.photoName)}`
+      : null;
+
+    return (
+      <article
+        key={result.id || `${result.source}-${index}`}
+        className="result-card"
+      >
+        <div className="place-photo">
+          <div className="photo-fallback" aria-hidden="true">
+            <svg viewBox="0 0 48 48">
+              <path d="M24 42s14-13.2 14-24a14 14 0 1 0-28 0c0 10.8 14 24 14 24Z" />
+              <circle cx="24" cy="18" r="4.5" />
+            </svg>
+            <span>No photo yet</span>
+          </div>
+          {photoUrl && (
+            <img
+              src={photoUrl}
+              alt={`${result.title} in ${result.address || "the searched area"}`}
+              loading="lazy"
+              onError={(event) => event.currentTarget.remove()}
+            />
+          )}
+          {result.photoAttributions?.length > 0 && (
+            <div className="photo-credit">{renderPhotoCredit(result.photoAttributions)}</div>
+          )}
+        </div>
+
+        <div className="result-content">
+          <div className="result-topline">
+            {result.rating != null && (
+              <div className="rating-badge" aria-label={`${result.rating} out of 5`}>
+                <span className="rating-star" aria-hidden="true">
+                  ★
+                </span>
+                <span className="rating-score">{result.rating}</span>
+                {typeof result.userRatingCount === "number" && (
+                  <span className="rating-count">
+                    {result.userRatingCount.toLocaleString()}
+                  </span>
+                )}
+              </div>
+            )}
+          </div>
+
+          <h3>{result.title}</h3>
+          <p className="result-address">{result.address}</p>
+
+          {result.url && (
+            <a href={result.url} target="_blank" rel="noreferrer" className="maps-link">
+              Open in Google Maps
+              <span aria-hidden="true"> ↗</span>
+            </a>
+          )}
+
+        </div>
+      </article>
+    );
+  };
+
+  const renderWebCard = (result, index) => (
+    <article
       key={result.id || `${result.source}-${index}`}
-      className={`web-insight-card ${historical ? "historical-card" : ""}`}
+      className="web-insight-card"
     >
-      <p className="result-source">
-        {result.source}
-        {historical ? " · historical" : ""}
-      </p>
-      <h4>{result.title}</h4>
+      <div className="guide-card-meta">
+        <span>{getSourceName(result)}</span>
+      </div>
+      <h3>{result.title}</h3>
       {result.description && <p className="result-description">{result.description}</p>}
-      <p className="result-address">{result.address}</p>
 
       {result.url && (
         <a
@@ -139,180 +219,197 @@ function App() {
           rel="noreferrer"
           className="maps-link secondary-link"
         >
-          Open source
+          Go to page
+          <span aria-hidden="true"> ↗</span>
         </a>
       )}
-    </div>
+    </article>
   );
 
   return (
     <div className="page">
-      <header className="hero">
-        <img src={logo} alt="locavia logo" className="logo" />
+      <div className={`app-frame ${hasSearched ? "has-results" : "landing"}`}>
+        <header className="hero">
+          <a className="brand" href="/" aria-label="Locavia home">
+            <img src={logoWithStamp} alt="Your local guide, Locavia" className="logo-lockup" />
+          </a>
 
-        <form className="search-shell" onSubmit={handleSearch}>
-          <div className="search-field">
-            <label>Where</label>
+          <form className="search-shell" onSubmit={handleSearch}>
+            <label className="visually-hidden" htmlFor="search-city">
+              Where
+            </label>
             <input
+              id="search-city"
               type="text"
-              placeholder="Search destinations"
+              placeholder="where?"
               value={city}
-              onChange={(e) => setCity(e.target.value)}
+              onChange={(event) => setCity(event.target.value)}
+              required
             />
-          </div>
 
-          <div className="divider" />
+            <span className="divider" aria-hidden="true" />
 
-          <div className="search-field">
-            <label>What</label>
+            <label className="visually-hidden" htmlFor="search-topic">
+              What sounds good?
+            </label>
             <input
+              id="search-topic"
               type="text"
-              placeholder="Search topic"
+              placeholder="what sounds good?"
               value={topic}
-              onChange={(e) => setTopic(e.target.value)}
+              onChange={(event) => setTopic(event.target.value)}
+              required
             />
-          </div>
-
-          <button type="submit" className="search-button">
-            {loading ? "..." : "Search"}
-          </button>
-        </form>
-
-        {!hasSearched && (
-          <p className="search-helper">
-            Enter a location and a topic to find top places and supporting web insights.
-          </p>
-        )}
-      </header>
-
-      <main className="results-section">
-        {hasSearched && !loading && results.length > 0 && (
-          <section className="summary-block">
-            <h2>
-              Best {displayTopic} spots
-              {displayCity ? ` in ${displayCity}` : ""}
-            </h2>
-
-            <p className="section-subtitle">
-              {placeResults.length} highly rated places and {webResults.length} supporting web
-              results found
-            </p>
-
-            <div className="system-summary">
-              <span className="system-pill">
-                Sources: {sourcesUsed.length > 0 ? sourcesUsed.join(", ") : "none"}
-              </span>
-
-              {meta?.resultCount !== undefined && (
-                <span className="system-pill">Current results: {meta.resultCount}</span>
-              )}
-
-              <span className="system-pill">
-                Historical results: {uniqueHistorical.length}
-              </span>
-            </div>
-          </section>
-        )}
-
-        {errorMessage && (
-          <div className="empty-state">
-            <h3>Something went wrong</h3>
-            <p>{errorMessage}</p>
-          </div>
-        )}
-
-        {hasSearched && !loading && results.length === 0 && !errorMessage && (
-          <div className="empty-state">
-            <h3>No matching results found</h3>
-            <p>Try a broader topic or another city.</p>
-          </div>
-        )}
-
-        {(visiblePlaces.length > 0 || visibleWebResults.length > 0) && (
-          <section className="main-overview-layout">
-            <div className="top-places-block">
-              <div className="section-header">
-                <div>
-                  <h2>Top places</h2>
-                  <p className="section-subtitle">
-                    Highly rated location results you can actually visit
-                  </p>
-                </div>
-              </div>
-
-              {visiblePlaces.map((result, index) => renderPlaceCard(result, index))}
-
-              {placeResults.length > 5 && (
-                <button
-                  type="button"
-                  className="see-more-button"
-                  onClick={() => setShowAllPlaces((prev) => !prev)}
-                >
-                  {showAllPlaces
-                    ? "Show less places"
-                    : `See more places (${placeResults.length - 5})`}
-                </button>
-              )}
-            </div>
-
-            <aside className="web-insights-block">
-              <div className="section-header">
-                <div>
-                  <h2>Web insights</h2>
-                  <p className="section-subtitle">
-                    Guides, articles, and discussions that add context
-                  </p>
-                </div>
-              </div>
-
-              {visibleWebResults.map((result, index) => renderWebCard(result, index))}
-
-              {webResults.length > 3 && (
-                <button
-                  type="button"
-                  className="see-more-button"
-                  onClick={() => setShowAllWebResults((prev) => !prev)}
-                >
-                  {showAllWebResults
-                    ? "Show less web results"
-                    : `See more web results (${webResults.length - 3})`}
-                </button>
-              )}
-            </aside>
-          </section>
-        )}
-
-        {uniqueHistorical.length > 0 && (
-          <section className="historical-section">
-            <div className="section-header">
-              <div>
-                <h2>Previous results</h2>
-                <p className="section-subtitle">
-                  {uniqueHistorical.length} saved historical entries
-                </p>
-              </div>
-            </div>
 
             <button
-              type="button"
-              className="see-more-button"
-              onClick={() => setShowHistorical((prev) => !prev)}
+              type="submit"
+              className="search-button"
+              aria-label={loading ? "Searching" : "Search"}
+              disabled={loading}
             >
-              {showHistorical ? "Hide previous results" : "Show previous results"}
+              {loading ? (
+                <span className="search-spinner" aria-hidden="true" />
+              ) : (
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <circle cx="10.8" cy="10.8" r="6.8" />
+                  <path d="m16 16 4.2 4.2" />
+                </svg>
+              )}
             </button>
+          </form>
 
-            {showHistorical && (
-              <div className="historical-list">
-                {uniqueHistorical.slice(0, 6).map((result, index) =>
-                  result.source === "Google Places"
-                    ? renderPlaceCard(result, index, true)
-                    : renderWebCard(result, index, true)
-                )}
-              </div>
-            )}
-          </section>
-        )}
-      </main>
+          <p className="landing-description">
+            Discover places to eat, spots to hang out, and things to do in any city or
+            neighborhood.
+          </p>
+        </header>
+
+        <main className="results-section">
+          {loading && <p className="loading-message">Finding great local spots…</p>}
+
+          {errorMessage && (
+            <div className="empty-state" role="alert">
+              <h2>Something went wrong</h2>
+              <p>{errorMessage}</p>
+            </div>
+          )}
+
+          {hasSearched && !loading && results.length === 0 && !errorMessage && (
+            <div className="empty-state">
+              <h2>No matching results found</h2>
+              <p>Try a broader topic or another city.</p>
+            </div>
+          )}
+
+          {hasSearched && !loading && results.length > 0 && (
+            <>
+              <section className="summary-block" aria-live="polite">
+                <h1>
+                  {displayTopic} in {displayCity}
+                </h1>
+
+                <div className="results-switch" role="group" aria-label="Result type">
+                  <button
+                    type="button"
+                    className={activeResultsTab === "places" ? "active" : ""}
+                    aria-pressed={activeResultsTab === "places"}
+                    disabled={placeResults.length === 0}
+                    onClick={() => setActiveResultsTab("places")}
+                  >
+                    Places
+                  </button>
+                  <button
+                    type="button"
+                    className={activeResultsTab === "guides" ? "active" : ""}
+                    aria-pressed={activeResultsTab === "guides"}
+                    disabled={webResults.length === 0}
+                    onClick={() => setActiveResultsTab("guides")}
+                  >
+                    Blogs, lists &amp; web finds
+                  </button>
+                </div>
+              </section>
+
+              {activeResultsTab === "places" && (
+                <section className="results-group" aria-labelledby="places-heading">
+                  <div className="section-header">
+                    <div>
+                      <h2 id="places-heading">Places to try</h2>
+                    </div>
+                    <label className="sort-control">
+                      <span>Sort by</span>
+                      <select
+                        value={placeSort}
+                        onChange={(event) => {
+                          setPlaceSort(event.target.value);
+                        }}
+                      >
+                        <option value="balanced">Best balance</option>
+                        <option value="rated">Highest rated</option>
+                        <option value="reviewed">Most reviewed</option>
+                      </select>
+                    </label>
+                  </div>
+
+                  <div className="result-grid">
+                    {visiblePlaces.map((result, index) => renderPlaceCard(result, index))}
+                  </div>
+                </section>
+              )}
+
+              {activeResultsTab === "guides" && (
+                <section
+                  className="results-group local-guides-section"
+                  aria-label="Blogs, lists and web finds"
+                >
+                  <div className="web-results-grid">
+                    {visibleWebResults.map((result, index) =>
+                      renderWebCard(result, index)
+                    )}
+                  </div>
+
+                  {visibleWebCount < webResults.length && (
+                    <button
+                      type="button"
+                      className="see-more-button"
+                      onClick={() => setVisibleWebCount((count) => count + 5)}
+                    >
+                      Load 5 more
+                    </button>
+                  )}
+                </section>
+              )}
+            </>
+          )}
+        </main>
+      </div>
+
+      <footer className="site-footer">
+        <div className="footer-byline">
+          <span>a project by</span>
+          <a
+            href="https://twitter.com/efeis1"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="footer-author"
+            aria-label="efeis on Twitter"
+          >
+            efeis
+          </a>
+          <img src="/efeis-cutout.png" alt="efeis logo" className="footer-logo" />
+        </div>
+        <a
+          href="https://github.com/efeis/locavia"
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Locavia GitHub repository"
+          className="footer-github"
+        >
+          <svg aria-hidden="true" viewBox="0 0 19 19">
+            <use href="/icons.svg#github-icon" />
+          </svg>
+        </a>
+      </footer>
     </div>
   );
 }

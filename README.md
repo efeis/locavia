@@ -23,6 +23,7 @@ The goal was to build a travel-relevant web application that:
 - retrieval from multiple external APIs
 - aggregation of results into one internal format
 - separation of results into **Top places** and **Web insights**
+- Google Places photos with photo-author attribution when provided
 - persistent storage of queries and results in Firestore
 - historical result lookup for repeated searches
 - result deduplication and sorting
@@ -111,9 +112,20 @@ Create a `.env` file inside the `backend` directory:
 
 ```env
 GOOGLE_MAPS_API_KEY=your_google_maps_api_key
-SERPAPI_KEY=your_serpapi_key
-ENABLE_SERPAPI=true
-````
+GOOGLE_CLOUD_PROJECT=your_google_cloud_project_id
+ENABLE_SERPAPI=false
+# Optional, when enabling SerpApi:
+# SERPAPI_KEY=your_serpapi_key
+```
+
+For local Firestore access, authenticate with Google Cloud CLI Application
+Default Credentials (`gcloud auth application-default login`) using an account
+that has access to the project. Place photos use the Google Places API and the
+same Maps API key; enable Places API (New) and billing for the project. Photo
+requests may incur additional Google Maps Platform usage charges. To enable
+web results, set `ENABLE_SERPAPI=true` and provide `SERPAPI_KEY`. Web results
+prioritize Reddit discussions, blogs, and curated lists ahead of direct business
+websites.
 
 ## Installation
 

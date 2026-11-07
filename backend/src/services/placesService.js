@@ -61,7 +61,7 @@ export async function searchPlaces(validatedCity, topic) {
 
   const requestBody = {
     textQuery: `${topic} in ${validatedCity.normalizedCity}`,
-    pageSize: 15,
+    pageSize: 20,
   };
 
   const hasViewport =
@@ -98,7 +98,7 @@ export async function searchPlaces(validatedCity, topic) {
         "Content-Type": "application/json",
         "X-Goog-Api-Key": apiKey,
         "X-Goog-FieldMask":
-          "places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.googleMapsUri,places.location",
+          "places.displayName,places.formattedAddress,places.rating,places.userRatingCount,places.googleMapsUri,places.location,places.photos.name,places.photos.authorAttributions",
       },
       body: JSON.stringify(requestBody),
     }
@@ -119,6 +119,13 @@ export async function searchPlaces(validatedCity, topic) {
     url: place.googleMapsUri || null,
     latitude: place.location?.latitude ?? null,
     longitude: place.location?.longitude ?? null,
+    photoName: place.photos?.[0]?.name || null,
+    photoAttributions: (place.photos?.[0]?.authorAttributions || []).map(
+      ({ displayName, uri }) => ({
+        displayName: displayName ?? null,
+        uri: uri ?? null,
+      })
+    ),
   }));
 
   return sortPlaces(filterPlaces(mappedResults));
