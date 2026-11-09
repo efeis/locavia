@@ -27,6 +27,7 @@ The goal was to build a travel-relevant web application that:
 - persistent storage of queries and results in Firestore
 - historical result lookup for repeated searches
 - result deduplication and sorting
+- save up to five places in a browser-persisted shortlist and share it with a link
 - resilient multi-source retrieval flow
 - responsive frontend interface
 - optional SerpApi integration via environment configuration
@@ -126,6 +127,21 @@ requests may incur additional Google Maps Platform usage charges. To enable
 web results, set `ENABLE_SERPAPI=true` and provide `SERPAPI_KEY`. Web results
 prioritize Reddit discussions, blogs, and curated lists ahead of direct business
 websites.
+
+For deployment, set `PORT` on the backend host if required by the platform. Set
+`VITE_API_BASE_URL` in the frontend build environment to the public backend URL
+(for example, `https://api.example.com`). The frontend defaults to
+`http://localhost:3001` when this variable is not set. Deploy the backend and
+frontend over HTTPS and configure the backend host to allow requests from the
+frontend's origin.
+
+Shortlists are stored in the user's browser. Places can be reordered, and each
+place can have an optional note that can be edited later. Clearing a list
+requires confirmation. Share links include the selected place details in the URL
+fragment and open as a standalone list; private notes and photo references are
+not included. Links use the current site address, so the app must be deployed on
+a publicly reachable URL for other people to open them. Place photos are stored
+locally with saved places and refreshed when matching search results are loaded.
 
 ## Installation
 

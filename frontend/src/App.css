@@ -284,6 +284,70 @@
   background: #f5f5f5;
 }
 
+.summary-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.summary-actions .results-switch {
+  margin: 0;
+}
+
+.shortlist-open-button,
+.shortlist-primary-button,
+.shortlist-secondary-button {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid #17151b;
+  border-radius: 999px;
+  background: #fff;
+  color: #17151b;
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  transition: background-color 140ms ease, border-color 140ms ease;
+}
+
+.shortlist-open-button:hover,
+.shortlist-primary-button:hover:not(:disabled),
+.shortlist-secondary-button:hover {
+  border-color: #17151b;
+  background: #17151b;
+  color: #fff;
+}
+
+.landing-shortlist-button {
+  margin-top: 8px;
+}
+
+.shortlist-primary-button {
+  background: #17151b;
+  color: #fff;
+}
+
+.shortlist-primary-button:hover:not(:disabled) {
+  border-color: #403b3b;
+  background: #403b3b;
+}
+
+.shortlist-primary-button:disabled {
+  border-color: #d8d8d8;
+  background: #e8e8e8;
+  color: #777;
+  cursor: not-allowed;
+}
+
+.shortlist-open-button:focus-visible,
+.shortlist-primary-button:focus-visible,
+.shortlist-secondary-button:focus-visible,
+.shortlist-toggle:focus-visible {
+  outline: 3px solid #17151b;
+  outline-offset: 3px;
+}
+
 .results-switch button {
   min-height: 40px;
   padding: 0 18px;
@@ -406,7 +470,7 @@
   min-width: 0;
   min-height: 100%;
   overflow: hidden;
-  background: #f3eff7;
+  background: #f5f5f5;
 }
 
 .place-photo > img {
@@ -426,7 +490,7 @@
   justify-content: center;
   gap: 8px;
   padding: 12px;
-  color: #80748d;
+  color: #777;
   font-size: 13px;
   text-align: center;
 }
@@ -482,6 +546,43 @@
   margin-bottom: 11px;
 }
 
+.shortlist-toggle {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border: 1px solid #e5e2e8;
+  border-radius: 999px;
+  background: #fff;
+  color: #5d5862;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  line-height: 1;
+  transition: border-color 140ms ease, background-color 140ms ease, color 140ms ease;
+}
+
+.shortlist-toggle svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linejoin: round;
+  stroke-width: 1.6;
+}
+
+.shortlist-toggle:hover,
+.shortlist-toggle.saved {
+  border-color: #ff0000;
+  background: #ff0000;
+  color: #fff;
+}
+
+.shortlist-toggle.saved svg {
+  fill: currentColor;
+}
+
 .result-source {
   margin: 0;
   color: #6429a7;
@@ -493,26 +594,17 @@
   display: inline-flex;
   flex: 0 0 auto;
   align-items: center;
-  gap: 4px;
-  padding: 5px 8px;
-  border: 1px solid #f0dddd;
-  border-radius: 999px;
-  background: #fff8f8;
+  gap: 3px;
   color: #403b3b;
   font-size: 13px;
   font-weight: 600;
 }
 
 .rating-star {
-  color: #ff0000;
-  font-size: 13px;
-}
-
-.rating-count {
-  margin-left: 2px;
-  color: #71696b;
-  font-size: 12px;
-  font-weight: 400;
+  display: block;
+  width: 13px;
+  height: 13px;
+  object-fit: contain;
 }
 
 .result-content h3,
@@ -555,19 +647,21 @@
   gap: 4px;
   margin-top: auto;
   padding: 8px 12px;
-  border: 1px solid #e2d0fa;
+  border: 1px solid #17151b;
   border-radius: 999px;
-  background: #f7f0ff;
-  color: #51208c;
+  background: #fff;
+  color: #17151b;
   font-size: 14px;
   font-weight: 600;
   line-height: 1.2;
   text-decoration: none;
-  transition: background-color 140ms ease;
+  transition: background-color 140ms ease, border-color 140ms ease, color 140ms ease;
 }
 
 .maps-link:hover {
-  background: #ede0ff;
+  border-color: #641dc0;
+  background: #641dc0;
+  color: #fff;
 }
 
 .web-insight-card {
@@ -623,6 +717,212 @@
 
 .secondary-link {
   margin-top: 0;
+}
+
+.shortlist-panel,
+.shared-shortlist-view {
+  margin: 0 0 28px;
+  padding: 20px;
+  border: 1px solid #e5e5e5;
+  border-radius: 26px;
+  background: #fff;
+  animation: rise-in 300ms ease-out both;
+}
+
+.shortlist-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.shortlist-heading h1,
+.shortlist-heading h2,
+.shared-shortlist-view > h2 {
+  margin: 0;
+  color: #17151b;
+  font-family: "ZTBrosOskon90s", Georgia, serif;
+  font-size: clamp(24px, 3vw, 32px);
+  font-weight: 400;
+  -webkit-text-stroke: 0.5px currentColor;
+}
+
+.shortlist-heading .shortlist-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.shortlist-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.shortlist-empty,
+.shortlist-message {
+  margin: 10px 0 0;
+  color: #5d5862;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.shortlist-message {
+  color: #403b3b;
+}
+
+.shared-shortlist-view > h2 {
+  margin-bottom: 16px;
+}
+
+.shared-shortlist-view .shortlist-actions {
+  margin-top: 16px;
+}
+
+.shared-shortlist-view .result-grid {
+  grid-template-columns: 1fr;
+}
+
+.shortlist-grid .result-card:hover,
+.shared-shortlist-view .result-card:hover {
+  border-color: #d8d8d8;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+}
+
+.place-note {
+  width: 100%;
+  margin: 0 0 12px;
+  color: #403b3b;
+  font-size: 14px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.place-note-form {
+  display: grid;
+  width: 100%;
+  gap: 7px;
+  margin: 0 0 12px;
+}
+
+.place-note-form label {
+  color: #403b3b;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.place-note-form textarea {
+  width: 100%;
+  min-height: 64px;
+  padding: 9px 10px;
+  border: 1px solid #cfcfcf;
+  border-radius: 8px;
+  background: #fff;
+  color: #17151b;
+  font: inherit;
+  font-size: 14px;
+  resize: vertical;
+}
+
+.place-note-form textarea:focus-visible {
+  outline: 2px solid #17151b;
+  outline-offset: 2px;
+}
+
+.place-note-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.shortlist-card-controls {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.shortlist-order-button {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  border: 1px solid #17151b;
+  border-radius: 50%;
+  background: #fff;
+  color: #17151b;
+  cursor: pointer;
+  font: inherit;
+  line-height: 1;
+}
+
+.shortlist-order-button:hover:not(:disabled) {
+  background: #17151b;
+  color: #fff;
+}
+
+.shortlist-order-button:disabled {
+  border-color: #d8d8d8;
+  color: #a0a0a0;
+  cursor: not-allowed;
+}
+
+.shortlist-order-button:focus-visible,
+.edit-note-button:focus-visible,
+.shortlist-danger-button:focus-visible {
+  outline: 2px solid #17151b;
+  outline-offset: 2px;
+}
+
+.edit-note-button {
+  margin: 0 0 12px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #17151b;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.shortlist-clear-confirmation {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 16px;
+  padding: 12px;
+  border: 1px solid #e5e5e5;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.shortlist-clear-confirmation p {
+  flex: 1 1 100%;
+  margin: 0;
+  color: #17151b;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.shortlist-danger-button {
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid #e32636;
+  border-radius: 999px;
+  background: #e32636;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.shortlist-danger-button:hover {
+  border-color: #bf1d2b;
+  background: #bf1d2b;
 }
 
 .see-more-button {
@@ -843,8 +1143,10 @@
     width: 100%;
   }
 
-  .results-switch {
-    margin-left: auto;
+  .summary-actions {
+    width: 100%;
+    flex-wrap: wrap;
+    justify-content: flex-end;
   }
 
   .section-header h2 {
@@ -863,6 +1165,37 @@
 
   .local-guides-section {
     padding: 0;
+  }
+
+  .shortlist-panel,
+  .shared-shortlist-view {
+    padding: 16px 12px;
+    border-radius: 22px;
+  }
+
+  .shortlist-heading {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .shortlist-heading .shortlist-actions {
+    width: 100%;
+  }
+
+  .shortlist-heading .shortlist-actions button {
+    flex: 1 1 auto;
+  }
+
+  .shortlist-card-controls {
+    margin-left: auto;
+  }
+
+  .shortlist-grid .result-topline {
+    gap: 6px;
+  }
+
+  .shortlist-clear-confirmation > button {
+    flex: 1 1 auto;
   }
 
   .sort-control {
