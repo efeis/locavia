@@ -8,14 +8,61 @@ import {
   saveResults,
   getHistoricalQueries,
   getHistoricalResults,
+  reserveDailyUsage,
 } from "./services/firestoreService.js";
 import { runSourceSearches } from "./services/searchAggregatorService.js";
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3001;
+const MAX_DAILY_SEARCHES = 20;
+const MAX_DAILY_PHOTOS = 100;
+const MAX_API_REQUESTS_PER_MINUTE = 60;
+
+let requestMinute = Math.floor(Date.now() / 60_000);
+let requestsThisMinute = 0;
 
 app.use(cors());
 app.use(express.json());
+
+app.use(["/search", "/places-photo"], (req, res, next) => {
+  const currentMinute = Math.floor(Date.now() / 60_000);
+  if (currentMinute !== requestMinute) {
+    requestMinute = currentMinute;
+    requestsThisMinute = 0;
+  }
+
+  if (requestsThisMinute >= MAX_API_REQUESTS_PER_MINUTE) {
+    return res.status(429).json({
+      error: "Locavia is receiving too many requests. Please try again in a minute.",
+    });
+  }
+
+  requestsThisMinute += 1;
+  return next();
+});
+
+async function reserveUsageOrRespond(res, counterName, dailyLimit, message) {
+  try {
+    const allowed = await reserveDailyUsage(counterName, dailyLimit);
+    if (allowed) return true;
+
+    const now = new Date();
+    const nextUtcDay = Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate() + 1
+    );
+    res.set("Retry-After", String(Math.ceil((nextUtcDay - now.getTime()) / 1000)));
+    res.status(429).json({ error: message });
+    return false;
+  } catch (error) {
+    console.error(`Could not check daily ${counterName} limit:`, error);
+    res.status(503).json({
+      error: "Locavia usage limits are temporarily unavailable. Please try again later.",
+    });
+    return false;
+  }
+}
 
 app.get("/", (req, res) => {
   res.json({ message: "locavia backend is running" });
@@ -34,6 +81,17 @@ app.get("/places-photo", async (req, res) => {
   const apiKey = process.env.GOOGLE_MAPS_API_KEY;
   if (!apiKey) {
     return res.status(500).json({ error: "Missing GOOGLE_MAPS_API_KEY in backend/.env" });
+  }
+
+  if (
+    !(await reserveUsageOrRespond(
+      res,
+      "photos",
+      MAX_DAILY_PHOTOS,
+      "Today's photo limit has been reached. Please try again tomorrow."
+    ))
+  ) {
+    return;
   }
 
   try {
@@ -61,16 +119,35 @@ app.get("/places-photo", async (req, res) => {
 app.post("/search", async (req, res) => {
   const { city, topic } = req.body;
 
-  if (!city || !topic) {
+  if (
+    typeof city !== "string" ||
+    typeof topic !== "string" ||
+    !city.trim() ||
+    !topic.trim() ||
+    city.length > 200 ||
+    topic.length > 100
+  ) {
     return res.status(400).json({
-      error: "City and topic are required.",
+      error: "Enter a city and topic within the allowed length.",
     });
   }
 
+  if (
+    !(await reserveUsageOrRespond(
+      res,
+      "searches",
+      MAX_DAILY_SEARCHES,
+      "Today's search limit has been reached. Please try again tomorrow."
+    ))
+  ) {
+    return;
+  }
+
+  const normalizedCityInput = city.trim();
   const normalizedTopic = topic.trim().toLowerCase();
 
   try {
-    const validatedCity = await validateCity(city);
+    const validatedCity = await validateCity(normalizedCityInput);
 
     if (!validatedCity) {
       return res.status(400).json({
@@ -93,7 +170,7 @@ app.post("/search", async (req, res) => {
     );
 
     const queryId = await saveQuery({
-      originalCity: city,
+      originalCity: normalizedCityInput,
       normalizedCity: validatedCity.normalizedCity,
       topic: normalizedTopic,
       formattedAddress: validatedCity.formattedAddress,

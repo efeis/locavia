@@ -1,0 +1,26 @@
+{
+  "hosting": {
+    "public": "frontend/dist",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "rewrites": [
+      {
+        "source": "/search",
+        "run": {
+          "serviceId": "locavia-api",
+          "region": "europe-west1"
+        }
+      },
+      {
+        "source": "/places-photo",
+        "run": {
+          "serviceId": "locavia-api",
+          "region": "europe-west1"
+        }
+      },
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  }
+}

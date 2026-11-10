@@ -4,7 +4,8 @@ import ratingStar from "./assets/star.png";
 import "./App.css";
 
 const API_BASE_URL = (
-  import.meta.env.VITE_API_BASE_URL || "http://localhost:3001"
+  import.meta.env.VITE_API_BASE_URL ||
+  (import.meta.env.PROD ? "" : "http://localhost:3001")
 ).replace(/\/$/, "");
 const SHORTLIST_STORAGE_KEY = "locavia-shortlist";
 const MAX_SHORTLIST_SIZE = 5;

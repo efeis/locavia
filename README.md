@@ -1,235 +1,60 @@
-# locavia
+# Locavia
 
-"locavia" is a cloud-based travel and place discovery app where users enter a location and a topic, and the system retrieves relevant information from multiple external services, stores query and result data persistently, and displays both current and historical results.
+Locavia helps you find places to eat, spots to hang out, and things to do in a new city. I made it to learn how an app can use cloud services, store data, and bring information together from different sources.
 
-<img width="1200" height="932" alt="Screenshot 2026-05-27 at 16 32 01" src="https://github.com/user-attachments/assets/77ed3864-e845-46dc-943b-6945e25472c6" />
+Try it on the [live site](https://project-59870267-0ffe-40cc-800.web.app).
 
-## Project Goal
+Search for a place or browse web guides and local recommendations. You can save up to five places, add notes, arrange your list, and share it with a link. Saved lists stay in your browser.
 
-This project was developed as part of **Lab Exercise 11: Travel Guide** in the course **Introduction to Cloud Computing** in the **International Computer Science** bachelor’s program at **OTH Regensburg.**
+## A few examples
 
-The goal was to build a travel-relevant web application that:
-- accepts a user-defined location and topic
-- retrieves information from multiple external APIs
-- presents the results in a usable web interface
-- stores data persistently for later reuse
-- supports historical result retrieval
-- is structured in a modular, cloud-oriented way
+Here are place searches for döner in Regensburg and iskender in Bursa.
 
-## Implemented Features
+![Döner places in Regensburg](screenshots/regensburg-doener.png)
 
-- search by location and topic
-- location validation and normalization using geocoding
-- retrieval from multiple external APIs
-- aggregation of results into one internal format
-- separation of results into **Top places** and **Web insights**
-- Google Places photos with photo-author attribution when provided
-- persistent storage of queries and results in Firestore
-- historical result lookup for repeated searches
-- result deduplication and sorting
-- save up to five places in a browser-persisted shortlist and share it with a link
-- resilient multi-source retrieval flow
-- responsive frontend interface
-- optional SerpApi integration via environment configuration
+![Iskender places in Bursa](screenshots/bursa-iskender.png)
 
-## Tech Stack
+You can save places and add notes to your shortlist.
 
-- **Frontend:** React, Vite, CSS
-- **Backend:** Node.js, Express
-- **Database:** Google Firestore
-- **External APIs:** Google Geocoding API, Google Places API, SerpApi
+![Paris cafe shortlist with saved notes](screenshots/paris-shortlist.png)
 
-## Architecture Overview
+The web results tab shows guides, lists, and local recommendations.
 
-The application is split into a frontend and a backend.
+![Pizza web results in Rome](screenshots/rome-pizza-guides.png)
 
-**Frontend responsibilities**
-- collect user input
-- send search requests to the backend
-- render current results
-- render supporting web insights
-- render optional historical results
-- display summary information such as source usage and result counts
+## What it uses
 
-**Backend responsibilities**
-- validate and normalize the location input
-- retrieve historical queries and linked results
-- build and run enabled search jobs
-- aggregate, deduplicate, and sort results
-- store queries and results persistently
-- return current and historical data to the frontend
+React and Vite make the site. The backend uses Node and Express. Google Maps helps find places, SerpApi finds web guides, and Firestore stores search history. The site is on Firebase Hosting and the backend runs on Cloud Run.
 
-## Search Flow
+## Run it on your computer
 
-1. The user enters a location and a topic
-2. The frontend sends a `POST /search` request to the backend
-3. The backend validates the location using geocoding
-4. Historical queries and linked results are retrieved from Firestore
-5. Enabled source jobs are built and executed
-6. Results are merged, deduplicated, and sorted
-7. The new query and current results are stored in Firestore
-8. The backend returns current results, historical results, source information, and summary metadata
-
-## Data Model
-
-The application uses two main Firestore collections:
-
-**queries**
-- original user input
-- normalized location
-- topic
-- formatted address
-- country
-- location coordinates
-- sources used
-- job metadata
-- search timestamp
-
-**results**
-- linked `queryId`
-- source
-- title
-- address / displayed link
-- description
-- rating
-- rating count
-- URL
-- retrieval timestamp
-
-This separation allows historical results to be retrieved by first finding matching queries and then loading linked results.
-
-## Setup
-
-### Prerequisites
-- Node.js installed
-- a Google Cloud project
-- a configured Firestore database
-- a valid Google Maps API key
-- a valid SerpApi key (optional if SerpApi is disabled)
-
-### Environment Variables
-
-Create a `.env` file inside the `backend` directory:
+You need Node, a Google Cloud project, and API keys for Google Maps and SerpApi. Put the keys and project ID in `backend/.env`:
 
 ```env
-GOOGLE_MAPS_API_KEY=your_google_maps_api_key
-GOOGLE_CLOUD_PROJECT=your_google_cloud_project_id
-ENABLE_SERPAPI=false
-# Optional, when enabling SerpApi:
-# SERPAPI_KEY=your_serpapi_key
+GOOGLE_MAPS_API_KEY=your_key
+GOOGLE_CLOUD_PROJECT=your_project_id
+ENABLE_SERPAPI=true
+SERPAPI_KEY=your_key
 ```
 
-For local Firestore access, authenticate with Google Cloud CLI Application
-Default Credentials (`gcloud auth application-default login`) using an account
-that has access to the project. Place photos use the Google Places API and the
-same Maps API key; enable Places API (New) and billing for the project. Photo
-requests may incur additional Google Maps Platform usage charges. To enable
-web results, set `ENABLE_SERPAPI=true` and provide `SERPAPI_KEY`. Web results
-prioritize Reddit discussions, blogs, and curated lists ahead of direct business
-websites.
-
-For deployment, set `PORT` on the backend host if required by the platform. Set
-`VITE_API_BASE_URL` in the frontend build environment to the public backend URL
-(for example, `https://api.example.com`). The frontend defaults to
-`http://localhost:3001` when this variable is not set. Deploy the backend and
-frontend over HTTPS and configure the backend host to allow requests from the
-frontend's origin.
-
-Shortlists are stored in the user's browser. Places can be reordered, and each
-place can have an optional note that can be edited later. Clearing a list
-requires confirmation. Share links include the selected place details in the URL
-fragment and open as a standalone list; private notes and photo references are
-not included. Links use the current site address, so the app must be deployed on
-a publicly reachable URL for other people to open them. Place photos are stored
-locally with saved places and refreshed when matching search results are loaded.
-
-## Installation
-
-### Backend
+Sign in to Google Cloud with `gcloud auth application-default login`, then start the backend:
 
 ```bash
 cd backend
 npm install
+npm start
 ```
 
-### Frontend
+In another terminal, start the site:
 
 ```bash
 cd frontend
 npm install
-```
-
-## Run Locally
-
-### Start backend
-
-```bash
-cd backend
-node src/index.js
-```
-
-Backend runs on:
-`http://localhost:3001`
-
-### Start frontend
-
-```bash
-cd frontend
 npm run dev
 ```
 
-Frontend usually runs on:
-`http://localhost:5173`
+Open `http://localhost:5173`.
 
-## How to Use
+## Cloud demo
 
-1. Open the frontend in your browser
-2. Enter a location in the **Where** field
-3. Enter a topic in the **What** field
-4. Click **Search**
-5. Explore:
-
-   * **Top places**
-   * **Web insights**
-   * **Previous results** if historical matches exist
-
-## Example Searches
-
-* `Regensburg + cafe`
-* `Berlin + museum`
-* `Cannes + cinema`
-* `Kadıköy + burger`
-
-## What Was Successfully Implemented
-
-* working frontend and backend integration
-* location validation before retrieval
-* multiple external API integrations
-* unified result model
-* persistent Firestore storage
-* historical query and result retrieval
-* modular job-based backend structure
-* responsive and presentation-ready interface
-
-## Limitations
-
-* no user authentication
-* no personalized recommendation engine
-* no booking or reservation functionality
-* no advanced map visualization
-* no full distributed worker orchestration yet
-
-## Future Improvements
-
-* deploy frontend and backend publicly
-* extend the number of external APIs
-* add distributed worker-based retrieval
-* improve source-specific ranking and filtering
-* add map-based interaction
-* improve historical browsing UX
-
-## Author
-
-**Efe Işıldar**
-International Computer Science
-OTH Regensburg
+The public demo allows up to 20 searches and 100 photo requests per UTC day, shared by everyone. It also allows up to 60 API requests per minute. Usage may still incur charges, and the monthly billing alert is a notification, not a spending cap.

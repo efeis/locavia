@@ -10,6 +10,39 @@ if (!admin.apps.length) {
 const db = admin.firestore();
 db.settings({ databaseId: "locavia-db" });
 
+export async function reserveDailyUsage(counterName, dailyLimit) {
+  const allowedCounters = ["searches", "photos"];
+  if (!allowedCounters.includes(counterName) || !Number.isInteger(dailyLimit) || dailyLimit < 1) {
+    throw new Error("Invalid daily usage counter configuration.");
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  const usageRef = db.collection("usageLimits").doc("publicApi");
+
+  return db.runTransaction(async (transaction) => {
+    const snapshot = await transaction.get(usageRef);
+    const usage = snapshot.exists && snapshot.data().day === today
+      ? snapshot.data()
+      : {};
+    const currentCount = Number.isInteger(usage[counterName]) ? usage[counterName] : 0;
+
+    if (currentCount >= dailyLimit) {
+      return false;
+    }
+
+    transaction.set(
+      usageRef,
+      {
+        day: today,
+        searches: counterName === "searches" ? currentCount + 1 : usage.searches || 0,
+        photos: counterName === "photos" ? currentCount + 1 : usage.photos || 0,
+      },
+      { merge: false }
+    );
+    return true;
+  });
+}
+
 export async function saveQuery(queryData) {
   const docRef = await db.collection("queries").add(queryData);
   return docRef.id;
